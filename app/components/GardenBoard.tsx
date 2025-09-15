@@ -95,6 +95,7 @@ function PlantCard({
 }
 
 export default function GardenBoard() {
+    // this is the data - REMOVED
   const [plants, setPlants] = useState<Plant[]>([
     { id: "1", name: "🌱 Basil", row: 0, col: 0 },
     { id: "2", name: "🌸 Rose", row: 1, col: 1 },
@@ -117,6 +118,7 @@ export default function GardenBoard() {
 
       {/* Plants */}
       {plants.map((plant) => (
+        // this is the data - REMOVED
         <PlantCard
           key={plant.id}
           plant={plant}

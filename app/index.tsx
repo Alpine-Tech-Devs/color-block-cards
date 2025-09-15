@@ -17,7 +17,7 @@ export default function Index() {
       <CustomText>Color Block Garden Design Cards</CustomText>
 
       {/* Navigation button */}
-      <Link href="/garden">Go to Garden</Link>
+      <Link style ={{ fontFamily: 'Cinzel' }} href="/garden">Go to Garden</Link>
     </View>
   );
 }
