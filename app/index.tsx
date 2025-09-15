@@ -1,4 +1,5 @@
 import { Text, View } from "react-native";
+import BlockCards from "./color-cards";
 
 export default function Index() {
   return (
@@ -10,6 +11,7 @@ export default function Index() {
       }}
     >
       <Text>Color Block Garden Design Cards</Text>
+      <BlockCards/>
     </View>
   );
 }
