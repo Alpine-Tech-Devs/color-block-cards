@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Dimensions, Text } from "react-native";
-import {
-  Gesture,
-  GestureDetector,
-} from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,6 +18,7 @@ type Plant = {
   name: string;
   row: number;
   col: number;
+  width: number; // width in grid cells / feet
 };
 
 function PlantCard({
@@ -39,9 +37,6 @@ function PlantCard({
   const y = useSharedValue(startY);
 
   const drag = Gesture.Pan()
-    .onStart(() => {
-      // Nothing yet — just record start
-    })
     .onUpdate((event) => {
       x.value = startX + event.translationX;
       y.value = startY + event.translationY;
@@ -50,32 +45,39 @@ function PlantCard({
       const newCol = Math.round(x.value / CELL_SIZE);
       const newRow = Math.round(y.value / CELL_SIZE);
 
-      // bounds check
-      if (
-        newRow < 0 ||
-        newCol < 0 ||
-        newRow >= GRID_ROWS ||
-        newCol >= GRID_COLS
-      ) {
+      // horizontal bounds check
+      if (newCol < 0 || newCol + plant.width - 1 >= GRID_COLS) {
         x.value = withSpring(startX);
+        return;
+      }
+      // vertical bounds check
+      if (newRow < 0 || newRow >= GRID_ROWS) {
         y.value = withSpring(startY);
         return;
       }
 
-      // occupied check
-      const occupied = plants.some(
-        (p) => p.id !== plant.id && p.row === newRow && p.col === newCol
-      );
+      // collision check for multi-cell width
+      const occupied = plants.some((p) => {
+        if (p.id === plant.id) return false;
+        const pStart = p.col;
+        const pEnd = p.col + p.width - 1;
+        const newStart = newCol;
+        const newEnd = newCol + plant.width - 1;
+        return newRow === p.row && newEnd >= pStart && newStart <= pEnd;
+      });
 
       if (occupied) {
+        // revert if overlapping
         x.value = withSpring(startX);
         y.value = withSpring(startY);
       } else {
+        // update plant position
         runOnJS(setPlants)((prev) =>
           prev.map((p) =>
             p.id === plant.id ? { ...p, row: newRow, col: newCol } : p
           )
         );
+        // snap visually
         x.value = withSpring(newCol * CELL_SIZE);
         y.value = withSpring(newRow * CELL_SIZE);
       }
@@ -83,6 +85,7 @@ function PlantCard({
 
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: x.value }, { translateY: y.value }],
+    width: CELL_SIZE * plant.width, // dynamic width
   }));
 
   return (
@@ -95,15 +98,15 @@ function PlantCard({
 }
 
 export default function GardenBoard() {
-    // this is the data - REMOVED
   const [plants, setPlants] = useState<Plant[]>([
-    { id: "1", name: "🌱 Basil", row: 0, col: 0 },
-    { id: "2", name: "🌸 Rose", row: 1, col: 1 },
+    { id: "1", name: "🌱 Basil", row: 0, col: 0, width: 2 },
+    { id: "2", name: "🌸 Rose", row: 1, col: 1, width: 1 },
+    { id: "3", name: "🍅 Tomato", row: 2, col: 0, width: 3 },
   ]);
 
   return (
     <View style={styles.container}>
-      {/* Grid cells */}
+      {/* Draw grid */}
       {Array.from({ length: GRID_ROWS }).map((_, r) =>
         Array.from({ length: GRID_COLS }).map((_, c) => (
           <View
@@ -116,9 +119,8 @@ export default function GardenBoard() {
         ))
       )}
 
-      {/* Plants */}
+      {/* Render plants */}
       {plants.map((plant) => (
-        // this is the data - REMOVED
         <PlantCard
           key={plant.id}
           plant={plant}
@@ -144,7 +146,6 @@ const styles = StyleSheet.create({
   },
   card: {
     position: "absolute",
-    width: CELL_SIZE,
     height: CELL_SIZE,
     backgroundColor: "#a3d9a5",
     borderRadius: 12,
