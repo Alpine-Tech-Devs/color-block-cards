@@ -1,4 +1,5 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import CustomText from "./CustomText";
 
 export default function Index() {
   return (
@@ -9,7 +10,7 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <Text>Color Block Garden Design Cards</Text>
+      <CustomText>Color Block Garden Design Cards</CustomText>
     </View>
   );
 }
