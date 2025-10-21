@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from "react-native-reanimated";
@@ -22,7 +22,7 @@ const plantImages: Record<string, any> = {
   "Little Henry Virginia Sweetspire": require("../../assets/images/Little_Henry.png"),
 };
 
-const PlantCard: FC<PlantCardProps> = ({ plant, plants, setPlants }) => {
+const PlantCard: React.FC<PlantCardProps> = ({ plant, plants, setPlants }) => {
   const startX = plant.col * 80;
   const startY = plant.row * 80;
 
