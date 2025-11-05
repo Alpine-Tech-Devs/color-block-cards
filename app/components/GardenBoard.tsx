@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, ScrollView, Dimensions } from "react-native";
 import PlantCard from "./PlantCard";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ScrollView } from "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { 
   BASE_CELL_SIZE, 
@@ -50,32 +50,56 @@ export default function GardenBoard() {
 
   console.log(plants)
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={styles.container}>
-          {/* Grid */}
-          {Array.from({ length: GRID_ROWS }).map((_, r) =>
-            Array.from({ length: GRID_COLS }).map((_, c) => (
-              <View
-                key={`${r}-${c}`}
-                style={[styles.cell, { top: r * BASE_CELL_SIZE, left: c * BASE_CELL_SIZE }]}
-              />
-            ))
-          )}
+  const gridWidth = GRID_COLS * BASE_CELL_SIZE;
+  const gridHeight = GRID_ROWS * BASE_CELL_SIZE;
 
-          {/* Plants */}
-          {Array.isArray(plants) && plants.map((plant) => (
-            <PlantCard key={plant.id} plant={plant} plants={plants} setPlants={setPlants} />
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView >
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <ScrollView 
+          contentContainerStyle={[
+            styles.scrollContent,
+            { width: gridWidth, height: gridHeight }
+          ]}
+          scrollEnabled={false}
+        >
+          <View style={[styles.gridContainer, { width: gridWidth, height: gridHeight }]}>
+            {/* Grid */}
+            {Array.from({ length: GRID_ROWS }).map((_, r) =>
+              Array.from({ length: GRID_COLS }).map((_, c) => (
+                <View
+                  key={`${r}-${c}`}
+                  style={[styles.cell, { top: r * BASE_CELL_SIZE, left: c * BASE_CELL_SIZE }]}
+                />
+              ))
+            )}
+
+            {/* Plants */}
+            {Array.isArray(plants) && plants.map((plant) => (
+              <PlantCard key={plant.id} plant={plant} plants={plants} setPlants={setPlants} />
+            ))}
+          </View>
+        </ScrollView>
+      </GestureHandlerRootView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f4f4f4" },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f4f4f4",
+  },
+  gestureRoot: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  gridContainer: {
+    position: 'relative',
+    backgroundColor: "#f4f4f4",
+  },
   cell: {
     position: "absolute",
     width: BASE_CELL_SIZE,

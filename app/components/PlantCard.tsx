@@ -52,16 +52,23 @@ const PlantCard: React.FC<PlantCardProps> = ({ plant, plants, setPlants }) => {
   const drag = Gesture.Pan()
     .minDistance(2)
     .maxPointers(1)
-    .onTouchesDown(() => {
+    .onBegin(() => {
       'worklet';
-      scale.value = 1.05;
       startX.value = x.value;
       startY.value = y.value;
+    })
+    .onTouchesDown(() => {
+      'worklet';
+      scale.value = withSpring(1.05);
     })
     .onUpdate((event) => {
       'worklet';
       x.value = startX.value + event.translationX;
       y.value = startY.value + event.translationY;
+    })
+    .onFinalize(() => {
+      'worklet';
+      scale.value = withSpring(1);
     })
     .onEnd(() => {
       'worklet';
