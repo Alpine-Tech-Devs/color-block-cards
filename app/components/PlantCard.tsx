@@ -1,13 +1,25 @@
 import React from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from "react-native-reanimated";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  runOnJS 
+} from "react-native-reanimated";
+import { 
+  BASE_CELL_SIZE, 
+  GRID_COLS, 
+  GRID_ROWS, 
+  getPixelWidth 
+} from '../constants';
 
 type Plant = {
   id: string;
   name: string;
   row: number;
   col: number;
+  widthInInches: number;
   width: number;
 };
 
@@ -23,88 +35,145 @@ const plantImages: Record<string, any> = {
 };
 
 const PlantCard: React.FC<PlantCardProps> = ({ plant, plants, setPlants }) => {
-  const startX = plant.col * 80;
-  const startY = plant.row * 80;
-
-  const x = useSharedValue(startX);
-  const y = useSharedValue(startY);
-
+  const startX = useSharedValue(plant.col * BASE_CELL_SIZE);
+  const startY = useSharedValue(plant.row * BASE_CELL_SIZE);
+  const x = useSharedValue(plant.col * BASE_CELL_SIZE);
+  const y = useSharedValue(plant.row * BASE_CELL_SIZE);
+  const scale = useSharedValue(1);
+  
+  const updatePlantPosition = React.useCallback((newRow: number, newCol: number) => {
+    setPlants(prev =>
+      prev.map(p =>
+        p.id === plant.id ? { ...p, row: newRow, col: newCol } : p
+      )
+    );
+  }, [plant.id, setPlants]);
+  
   const drag = Gesture.Pan()
+    .minDistance(2)
+    .maxPointers(1)
+    .onTouchesDown(() => {
+      'worklet';
+      scale.value = 1.05;
+      startX.value = x.value;
+      startY.value = y.value;
+    })
     .onUpdate((event) => {
-      x.value = startX + event.translationX;
-      y.value = startY + event.translationY;
+      'worklet';
+      x.value = startX.value + event.translationX;
+      y.value = startY.value + event.translationY;
     })
     .onEnd(() => {
-      const newCol = Math.round(x.value / 80);
-      const newRow = Math.round(y.value / 80);
+      'worklet';
+      scale.value = 1.0;
+      
+      // Snap to grid
+      const newCol = Math.round(x.value / BASE_CELL_SIZE);
+      const newRow = Math.round(y.value / BASE_CELL_SIZE);
+      
+      // Check grid bounds
+      // const isValidPosition = newCol >= 0 && 
+      //   newCol + plant.width <= GRID_COLS && 
+      //   newRow >= 0 && 
+      //   newRow < GRID_ROWS;
+      const isValidPosition = true;
 
-      if (newCol < 0 || newCol + plant.width - 1 >= 5) {
-        x.value = withSpring(startX);
-        return;
-      }
-      if (newRow < 0 || newRow >= 8) {
-        y.value = withSpring(startY);
-        return;
-      }
-
-      const occupied = plants.some((p) => {
+      // Check for collisions
+      const hasCollision = plants.some((p) => {
         if (p.id === plant.id) return false;
-        const pStart = p.col;
-        const pEnd = p.col + p.width - 1;
-        const newStart = newCol;
-        const newEnd = newCol + plant.width - 1;
-        return newRow === p.row && newEnd >= pStart && newStart <= pEnd;
+        
+        const thisLeft = newCol;
+        const thisRight = newCol + plant.width;
+        const thisTop = newRow;
+        const thisBottom = newRow + 1;
+        
+        const otherLeft = p.col;
+        const otherRight = p.col + p.width;
+        const otherTop = p.row;
+        const otherBottom = p.row + 1;
+        
+        return !(thisRight <= otherLeft || 
+                thisLeft >= otherRight || 
+                thisBottom <= otherTop || 
+                thisTop >= otherBottom);
       });
 
-      if (occupied) {
-        x.value = withSpring(startX);
-        y.value = withSpring(startY);
+      // Update position if valid and no collision
+      if (isValidPosition && !hasCollision) {
+        runOnJS(updatePlantPosition)(newRow, newCol);
+        x.value = withSpring(newCol * BASE_CELL_SIZE);
+        y.value = withSpring(newRow * BASE_CELL_SIZE);
       } else {
-        runOnJS(setPlants)((prev) =>
-          prev.map((p) =>
-            p.id === plant.id ? { ...p, row: newRow, col: newCol } : p
-          )
-        );
-        x.value = withSpring(newCol * 80);
-        y.value = withSpring(newRow * 80);
+        x.value = withSpring(startX.value);
+        y.value = withSpring(startY.value);
       }
     });
 
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }, { translateY: y.value }],
-    width: 80 * plant.width,
-    height: 80,
+    transform: [
+      { translateX: x.value }, 
+      { translateY: y.value },
+      { scale: scale.value }
+    ],
+    width: getPixelWidth(plant.width),
+    height: BASE_CELL_SIZE,
   }));
 
+  const pixelWidth = getPixelWidth(plant.width);
+  
+  const [imageError, setImageError] = React.useState(false);
+  {console.log("PlantCard")}
+
   return (
-    <GestureDetector gesture={drag}>
-      <Animated.View style={[{ position: "absolute" }, style]}>
-        <View style={[styles.cardContainer, { width: 80 * plant.width }]}>
-          <Image
-            source={plantImages[plant.name]}
-            style={{ width: "100%", height: 80 }}
-            resizeMode="cover"
-          />
-          <Text style={styles.title}>{plant.name}</Text>
-        </View>
-      </Animated.View>
-    </GestureDetector>
+    <View style={{ position: 'absolute' }}>
+      <GestureDetector gesture={drag}>
+        <Animated.View style={[styles.container, style]}>
+          <View style={[styles.cardContainer, { width: getPixelWidth(plant.width) }]}>
+            <Image
+              source={!imageError ? plantImages[plant.name] : require("../../assets/images/Lowbush_Blueberry.png")}
+              style={styles.image}
+              resizeMode="cover"
+              onError={() => setImageError(true)}
+              defaultSource={require("../../assets/images/Lowbush_Blueberry.png")}
+            />
+            <Text style={styles.title} numberOfLines={2}>
+              {plant.name} ({plant.widthInInches}")
+            </Text>
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    </View>
   );
 };
 
-export default PlantCard;
-
 const styles = StyleSheet.create({
+  container: {
+    position: "absolute",
+  },
   cardContainer: {
     backgroundColor: "#e2f0ff",
     borderRadius: 12,
     overflow: "hidden",
     alignItems: "center",
+    elevation: 3, // Keep elevation for Android
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)', // For web
+  },
+  image: {
+    width: "100%",
+    height: BASE_CELL_SIZE,
   },
   title: {
     fontWeight: "600",
     textAlign: "center",
     fontSize: 12,
-    paddingVertical: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
 });
+
+export default PlantCard;
